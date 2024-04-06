@@ -58,27 +58,102 @@ architecture test_bench of thunderbird_fsm_tb is
 	
 	component thunderbird_fsm is 
 	  port(
-		
+		     i_clk, i_reset  : in    std_logic;
+             i_left, i_right : in    std_logic;
+             o_lights_L      : out   std_logic_vector(2 downto 0);
+             o_lights_R      : out   std_logic_vector(2 downto 0)
 	  );
 	end component thunderbird_fsm;
 
 	-- test I/O signals
-	
+	-- Inputs
+	    signal w_clk : std_logic := '0';
+	    signal w_reset : std_logic := '0';
+	    signal w_left : std_logic := '0';
+	    signal w_right : std_logic := '0';
+        
+	--Outputs
+	    signal w_taillight_R : std_logic_vector(2 downto 0) := "000";
+	    signal w_taillight_L : std_logic_vector(2 downto 0) := "000";
+	    
 	-- constants
-	
+	    constant k_clk_period : time := 10 ns;
 	
 begin
 	-- PORT MAPS ----------------------------------------
-	
-	-----------------------------------------------------
+	-- Instantiate the Unit Under Test (UUT)
+       uut: thunderbird_fsm port map (
+              i_clk => w_clk,
+              i_reset => w_reset,
+              i_left => w_left,
+              i_right => w_right,
+              o_lights_L(0) => w_taillight_L(0),
+              o_lights_L(1) => w_taillight_L(1),
+              o_lights_L(2) => w_taillight_L(2),
+              o_lights_R(2) => w_taillight_R(2),
+              o_lights_R(1) => w_taillight_R(1),
+              o_lights_R(0) => w_taillight_R(0)
+            );
 	
 	-- PROCESSES ----------------------------------------	
     -- Clock process ------------------------------------
-    
-	-----------------------------------------------------
-	
+    clk_proc : process
+        begin
+            w_clk <= '0';
+                wait for k_clk_period/2;
+            w_clk <= '1';
+                wait for k_clk_period/2;
+        end process;
+        
+        sim_proc : process
+            begin
+                -- sequential timing        
+                w_reset <= '1';
+                    wait for k_clk_period*1;
+                     assert w_taillight_R = "000" report "bad reset" severity failure;
+                     assert w_taillight_L = "000" report "bad reset" severity failure;
+                
+                w_reset <= '0';
+                wait for k_clk_period*1;
+            
+         
 	-- Test Plan Process --------------------------------
-	
-	-----------------------------------------------------	
-	
+    -- Hazards
+           w_left <= '1'; w_right <='1'; wait for k_clk_period*1;
+                assert w_taillight_R= "111" report "lights on" severity failure;
+                assert w_taillight_L = "111" report "lights on" severity failure;
+        wait for k_clk_period*1;
+                assert w_taillight_R= "000" report "lights off" severity failure;
+                assert w_taillight_L = "000" report "lights off" severity failure;
+                
+	-- right blinker
+           w_left <= '0'; w_right <= '0'; wait for k_clk_period;
+                assert w_taillight_L = "000" report "Left should be off" severity failure;
+                assert w_taillight_R = "000" report "Right tail light should be off " severity failure;
+             w_left <= '0'; w_right <= '1'; wait for k_clk_period;
+                assert w_taillight_L = "000" report "Left should be off" severity failure;
+                assert w_taillight_R = "001" report "should be RA" severity failure;
+           w_left <= '0'; w_right <= '1'; wait for k_clk_period;
+                assert w_taillight_L = "000" report "Left should be off" severity failure;
+                assert w_taillight_R = "011" report "should RA and RB" severity failure;
+           w_left <= '0'; w_right <= '1'; wait for k_clk_period;
+                assert w_taillight_L = "000" report "Left should be off" severity failure;
+                assert w_taillight_R = "111" report "should be all" severity failure;
+                
+     -- left blinker
+           w_left <= '0'; w_right <= '0'; wait for k_clk_period;
+               assert w_taillight_R = "000" report "Right should be off" severity failure;
+               assert w_taillight_L = "000" report "Left tail light should be off " severity failure;
+           w_left <= '1'; w_right <= '0'; wait for k_clk_period;
+               assert w_taillight_R = "000" report "Right should be off" severity failure;
+               assert w_taillight_L = "001" report "should be LC" severity failure;
+           w_left <= '1'; w_right <= '0'; wait for k_clk_period;
+               assert w_taillight_R = "000" report "Right should be off" severity failure;
+               assert w_taillight_L = "011" report "should be LB" severity failure;
+           w_left <= '1'; w_right <= '0'; wait for k_clk_period;
+               assert w_taillight_R = "000" report "Right should be off" severity failure;
+               assert w_taillight_L = "111" report "should be LA" severity failure;
+	wait;
+end process sim_proc;
+
 end test_bench;
